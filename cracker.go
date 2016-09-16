@@ -48,6 +48,17 @@ func main () {
     defer dbh.Close()
     jh = new(JohnHandler)
     jh.Init()
+    
+    /* Start a new Session with JohnHandler */
+    run := jh.Start(&Wpa{id:111, name:"Keykey", bssid:"AA:BB:CC:DD:EE:FF"})
+    dbh.StoreRun(run)
+
+    /* Check if there are any unfinnished runs. */
+    listruns := dbh.GetAllNotDoneRuns()
+    for _,run := range listruns {
+    
+    }
+    
 
     /* Scan the given folders */
  //   dbh.StoreWordlist(&Wordlist{id:0, name:"rockyou.txt", size:"143MB", avg_run:30012313})
@@ -76,8 +87,6 @@ func JohnController() {
 
     }
 }
-
-
 
 /**
  * Controls the LEDs, that will indicate the status of the cracker.
@@ -131,7 +140,6 @@ func LEDLight(State int, led *Led) {
 	}
 }
 
-
 /**
  * Scans and updates the database file based on what 
  * files are found.
@@ -160,7 +168,6 @@ func ScanUpdate() {
         dbh.StoreWordlist(&Wordlist{name:file.Name(), size:string(file.Size()), avg_run:0})
     }
 }
-
 
 /**
  * Scans a given directory and returns a list of 

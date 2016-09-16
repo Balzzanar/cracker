@@ -9,8 +9,13 @@ import (
 /* -- Constants -- */
 const TABLE_WPA = `create table if not exists wpa (id integer not null primary key, name text, bssid varchar(30));`
 const TABLE_WORDLISTS = `create table if not exists wordlists (id integer not null primary key, name text, size varchar(10), avg_run int);`
-const TABLE_RUNS = `create table if not exists runs (id_wpa int, id_wordlist, result text, time int, started int);`
+const TABLE_RUNS = `create table if not exists runs (id_wpa int, id_wordlist, result text, time int, started int, session string, status string);`
 const DB_FILE_NAME = "./list.db"
+
+const RUNSTATUS_DONE = "Done"
+const RUNSTATUS_NOTSTARTED = "NotStarted"
+const RUNSTATUS_RUNNING = "Running"
+const RUNSTATUS_PAUSED = "Paused"
 
 
 type Wordlist struct {
@@ -24,6 +29,16 @@ type Wpa struct {
 	id int
 	name string
 	bssid string
+}
+
+type Run struct {
+	id_wpa int
+	id_wordlist int
+	result string
+	time int
+	started int
+	session string
+	status string
 }
 
 type DBHandler struct {
@@ -85,6 +100,77 @@ func (this *DBHandler) StoreWordlist(wordlist *Wordlist) {
 	tx.Commit()
 }
 
+/**
+ * Stores a run to the databasefile
+ * 
+ * @name StoreRun
+ */
+func (this *DBHandler) StoreRun(run *Run) {
+	tx, err := this.db.Begin()
+	if err != nil {
+		fmt.Println(err)
+	}
+	stmt, err := tx.Prepare("insert into runs(id_wpa, id_wordlist, result, time, started, session, status) values(?, ?, ?, ?, ?, ?, ?)")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(run.id_wpa, run.id_wordlist, "", 0, run.started, run.session, RUNSTATUS_NOTSTARTED)
+	if err != nil {
+		fmt.Println(err)
+	}
+	tx.Commit()
+}
+
+/**
+ * Update a run in the databasefile
+ * 
+ * @name UpdateRun
+ */
+func (this *DBHandler) UpdateRun(run *Run) {
+	tx, err := this.db.Begin()
+	if err != nil {
+		fmt.Println(err)
+	}
+	stmt, err := tx.Prepare("update runs set result=?, time=?, status=? where session=?")
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer stmt.Close()
+	_, err = stmt.Exec(run.result, run.time, run.session)
+	if err != nil {
+		fmt.Println(err)
+	}
+	tx.Commit()
+}
+
+/**
+ * Gets a list with all the known runs that are not done.
+ * 
+ * @name GetAllNotDoneRuns
+ * @return []Run
+ */
+func (this *DBHandler) GetAllNotDoneRuns() []Run {
+	listrun := []Run{}
+	rows, err := this.db.Query(fmt.Sprintf("select * from runs where status != '%s'", RUNSTATUS_DONE))
+	if err != nil {
+		fmt.Println(err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var run Run  // id_wpa, id_wordlist, result, time, started, session, status
+		err = rows.Scan(&run.id_wpa, &run.id_wordlist, &run.result, &run.time, &run.started, &run.session, &run.status)
+		if err != nil {
+			fmt.Println(err)
+		}
+		listrun = append(listrun, run)
+	}
+	err = rows.Err()
+	if err != nil {
+		fmt.Println(err)
+	}
+	return listrun
+}
 
 /**
  * Gets a list with all the knows wpas.
@@ -114,6 +200,7 @@ func (this *DBHandler) GetAllWpa() []Wpa {
 	}
 	return listwpa
 }
+
 
 
 /**

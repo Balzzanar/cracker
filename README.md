@@ -23,6 +23,9 @@ More options for John can be found [here][2]
 #### Internet Connection
 TODO
 
+#### Session 
+* Generation needs to be uniqe on each call 
+
 
 ## Functions
 ---
